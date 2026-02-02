@@ -1,0 +1,12 @@
+
+MODELO = "gpt-5.1-2025-11-13"
+MODELO_MINI = "gpt-4.1-mini"
+MODELO_CAPITULO = "gpt-5-nano-2025-08-07"
+MODELO_TRANSCRIBE = "gpt-4o-mini-transcribe"
+MODELO_TEXTO_AUDIO = "gpt-4o-mini-tts"
+CHUNCKS_POR_LIBRO = 7
+OVERLAP = 5
+CHUNK_LIBRO = 350
+
+MIN_TEXTO_POR_PAGINA = 20
+RUTA_BASE = "/data/libros"
