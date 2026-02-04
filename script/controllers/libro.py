@@ -32,24 +32,32 @@ def subirLibro(nombre_libro, paginas, capitulos,fecha, autor, tipo, tags, url_do
             bookId = resultBook.scalar()
 
             if capitulos:
+                filas = []
+                for cap in capitulos:
+                    texto = cap['titulo']
+                    subs = cap.get("subcapitulos",[])
+                    if subs:
+                        texto += "\n\n"
+                        texto += "\n".join(
+                            f"- {s['titulo']}" for s in subs
+                        )
+                    filas.append({
+                        "id_libro": bookId,
+                        "titulo": texto
+                    })
+
+
                 conn.execute(
                     text("""
                         INSERT INTO capitulos (id_libro, titulo)
                         VALUES (:id_libro, :titulo)
 
                     """),
-                    [
-                        {
-                        "id_libro": bookId,
-                        "titulo": c["titulo"]
-                        }
-                        for c in capitulos
-                    ]
+                     filas
                 )
 
 
         TAMAÑO_LOTE = 40
-
         lote = []
         total_chunks = 0
 

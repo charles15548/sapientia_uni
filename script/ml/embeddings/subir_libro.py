@@ -10,6 +10,7 @@ import fitz
 import re
 from fastapi import HTTPException
 from script.ml.variables_globales import MIN_TEXTO_POR_PAGINA,MODELO_CAPITULO,RUTA_BASE
+from script.ml.gpt.prompt import PROMPT_CAPITULOS
 
 # async def extraer_texto(archivo: UploadFile) -> str:
 #     filename = archivo.filename.lower()
@@ -128,33 +129,8 @@ def detectar_capitulos(paginas):
     
     paginas_recortadas = paginas[:30]
 
-    prompt = """
-Eres un analizador de libros.
+    prompt = PROMPT_CAPITULOS
 
-Recibirás una lista de páginas de un libro.
-Cada página tiene:
-- numero de página
-- texto completo
-
-Tu tarea es detectar los TÍTULOS DE CAPÍTULOS reales del libro.
-
-Reglas IMPORTANTES:
-- Solo detecta capítulos reales (Capítulos, Secciones)
-- No detectes subtítulos menores
-- No inventes capítulos
-- Mantén el orden original del libro
-- Si no hay capítulos claros, devuelve una lista vacía
-
-Devuelve ÚNICAMENTE un JSON válido con esta estructura exacta:
-
-{
-  "capitulos": [
-    {
-      "titulo": "string"
-    }
-  ]
-}
-"""
 
     response = client.chat.completions.create(
         model=MODELO_CAPITULO, 
@@ -241,6 +217,8 @@ def procesarSubida(nombreLibro, contenido,fecha, autor, tipo, tags):
             )
 
         capitulos = detectar_capitulos(paginas)
+        print("📚 Capítulos detectados:")
+         
 
         print(f"""
             ==========
