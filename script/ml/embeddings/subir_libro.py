@@ -136,10 +136,10 @@ Cada página tiene:
 - numero de página
 - texto completo
 
-Tu tarea es detectar los TÍTULOS DE CAPÍTULOS reales del libro.
+Tu tarea es detectar los TÍTULOS DE CAPÍTULOS y sub capitulos(si existen) reales del libro.
 
 Reglas IMPORTANTES:
-- Solo detecta capítulos reales (Capítulo, Parte, Sección principal)
+- Solo detecta capítulos reales (Capítulos y sub capitulos, Secciones)
 - No detectes subtítulos menores
 - No inventes capítulos
 - Mantén el orden original del libro

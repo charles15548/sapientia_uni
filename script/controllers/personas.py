@@ -54,11 +54,20 @@ def login(correo, contrasena):
             return {"id": 0, "message":"No se encontro usuario"}
 
 
-# if __name__ == "__main__":
-#     agregarPersona(
-#     nombre="usuario",
-#     apellidos="usuario",
-#     correo="usuario@gmail.com",
-#     contrasena="usuario",
-#     foto=""
-#     )
+if __name__ == "__main__":
+    
+    agregarPersona(
+    nombre="admin",
+    apellidos="admin",
+    correo="admin@gmail.com",
+    contrasena="admin",
+    foto=""
+    )
+    
+    agregarPersona(
+    nombre="usuario",
+    apellidos="usuario",
+    correo="usuario@gmail.com",
+    contrasena="usuario",
+    foto=""
+    )
