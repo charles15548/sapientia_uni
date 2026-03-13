@@ -12,32 +12,7 @@ from fastapi import HTTPException
 from script.ml.variables_globales import MIN_TEXTO_POR_PAGINA,MODELO_CAPITULO,RUTA_BASE
 from script.ml.gpt.prompt import PROMPT_CAPITULOS
 
-# async def extraer_texto(archivo: UploadFile) -> str:
-#     filename = archivo.filename.lower()
-
-#     contenido = await archivo.read()
-
-#     # --- PDF ---
-#     if filename.endswith(".pdf"):
-        
-#         reader = PdfReader(BytesIO(contenido))
-#         texto_total = []
-#         for page in reader.pages:
-#             texto = page.extract_text()
-#             if texto:
-#                 texto_total.append(texto)
-
-#         return "\n".join(texto_total)
-#     elif filename.endswith(".docx"):
-#         doc = Document(BytesIO(contenido))
-#         texto_total = []
-#         for para in doc.paragraphs:
-#             if para.text.strip():
-#                 texto_total.append(para.text)
-#         return "\n".join(texto_total)
-#     else:
-#         raise ValueError("Formato de archivo no soportado. Usa PDF o DOCX.")
-
+ 
 def limpiar_texto_rag(texto: str) -> str:
     # Eliminar NUL explícitamente (CRÍTICO)
     texto = texto.replace("\x00", "")
