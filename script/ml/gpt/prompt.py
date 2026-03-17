@@ -33,7 +33,7 @@ Cada página tiene:
 - número de página
 - texto completo
 
-Tu tarea es detectar los TÍTULOS DE CAPÍTULOS y SUBCAPÍTULOS reales del libro.
+Tu tarea es detectar los CAPÍTULOS y SUBCAPÍTULOS reales del libro.
 
 REGLAS IMPORTANTES:
 - Solo detecta capítulos y subcapítulos reales (Capítulos, Secciones principales)
@@ -41,8 +41,7 @@ REGLAS IMPORTANTES:
 - Mantén el orden original del libro
 - Un subcapítulo SOLO puede existir dentro de un capítulo
 - Si un capítulo no tiene subcapítulos claros, devuelve una lista vacía
-- Si no hay capítulos claros, devuelve una lista vacía
-- En algunos casos encontraras, capitulos y sub a lado de sus numeros de pagina en donde se encuentran, eso te ayudara a ordenas los capitulos y sub capitulos. Ej: Presentacion 11, Anexo 90, Mision 14. En este ejemplo queda, lo mas probable es que Mision sea un sub capitulo de Presentación
+- En el titulo NO incluyas numeración, números romanos, ni prefijos como "Capítulo 1", "I.", "1.1", etc. Solo el nombre limpio. Ejemplo: en lugar de "Capítulo I: Introducción" devuelve solo "Introducción"
 Devuelve ÚNICAMENTE un JSON válido con EXACTAMENTE esta estructura:
 
 {

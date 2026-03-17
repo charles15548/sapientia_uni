@@ -2,14 +2,19 @@ from script.controllers.personas import login
 
 from fastapi import FastAPI, HTTPException,Form,File,Body,UploadFile
 from fastapi.responses import JSONResponse
-from script.ml.embeddings.subir_libro import procesarSubida, guardar_libro_en_disk
+from script.ml.embeddings.libros.subir_libro import procesarSubida, guardar_libro_en_disk
 from script.controllers.libro import eliminar_libro, listar_libros,descargar_libro_por_id
+from script.controllers.capitulos import obtener_listado_libros_con_capitulos_service
+from script.controllers.capitulos import editar_capitulo,editar_subcapitulo
 from script.ml.response import response_stream
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from typing import List,Literal
 from pydantic import BaseModel
 import json
+import logging
+
+
 
 from fastapi.responses import StreamingResponse
 
@@ -67,6 +72,9 @@ async def log(
 correo: str = Form(...),
 contrasena: str = Form(...),
 ):
+    logging.warning("login ejecutado")
+    
+    
     user = login(correo,contrasena)
     return user
 
@@ -88,7 +96,26 @@ def obtener_libros():
             status_code=500,
             detail="Error al obtener la lista de libros"
         )
-    
+
+
+@app.get("/libros/con-capitulos")
+def obtener_libros_y_capitulos():
+    try:
+        libros = obtener_listado_libros_con_capitulos_service()
+        return {
+            "total": len(libros),
+            "libros": libros
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail="Error al obtener la lista de libros"
+        )
+  
+
+
 @app.get("/libros/{id}/descargar")
 def descargar(id: int):
     return descargar_libro_por_id(id)
@@ -118,7 +145,7 @@ async def subir_documento(
         )
 
 # @app.post("/subir-libro")
-# async def subir_documento(
+# async def subir_documento_striming(
 #     nombreLibro: str = Form(...),
 #     contenido: UploadFile = File(...)
 # ):
@@ -213,6 +240,39 @@ async def subir_manual(
         )
 
 
+
+
+
+
+# ===============
+# CAPITULOS
+# ===============
+
+@app.put("/capitulos/{cap_id}")
+def endpoint_editar_capitulo(cap_id: int, body: dict):
+    try:
+        nuevo_titulo = body.get("titulo","").strip()
+        if not nuevo_titulo:
+            raise HTTPException(status_code=400, detail="El título no puede estar vacío")
+        return editar_capitulo(cap_id, nuevo_titulo)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Error al editar capítulo")
+
+@app.put("/subcapitulos/{sub_id}")
+def endpoint_editar_subcapitulo(sub_id: int, body: dict):
+    try:
+        nuevo_titulo = body.get("titulo","").strip()
+        if not nuevo_titulo:
+            raise HTTPException(status_code=400, detail="El título no puede estar vacío")
+        return editar_subcapitulo(sub_id, nuevo_titulo)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Error al editar capítulo")
+
+
 # Ejecutar: uvicorn app:app --reload
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("app:app", host="127.0.0.1", port=8001, reload=False)

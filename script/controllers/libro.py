@@ -5,14 +5,12 @@ from fastapi import HTTPException
 import os
 
 from script.ml.embeddings.embedding import dividir_en_chunks,limpiar_texto,generar_embedding
-
 from script.bd.db import engine
 
 
 def subirLibro(nombre_libro, paginas, capitulos,fecha, autor, tipo, tags, url_doc):
     
-       
-
+        
         with engine.begin() as conn:
             resultBook = conn.execute(
                 text("""
@@ -32,35 +30,45 @@ def subirLibro(nombre_libro, paginas, capitulos,fecha, autor, tipo, tags, url_do
             bookId = resultBook.scalar()
 
             if capitulos:
-                filas = []
-                for cap in capitulos:
-                    texto = cap['titulo']
+                for orden_cap, cap in enumerate(capitulos):
+                    # Insertar capitulos
+                    result_cap = conn.execute(
+                        text("""
+                            INSERT INTO capitulos (id_libro, titulo, orden)
+                            VALUES (:id_libro, :titulo, :orden)
+                            RETURNING id;
+                        """),
+                        {
+                            "id_libro":bookId,
+                            "titulo": cap["titulo"],
+                            "orden": orden_cap
+                        }
+                    )
+                    capId = result_cap.scalar()
+                    # Insertar subcapítulos 
                     subs = cap.get("subcapitulos",[])
                     if subs:
-                        texto += "\n\n"
-                        texto += "\n".join(
-                            f"- {s['titulo']}" for s in subs
+                        filas_subs = [
+                            {
+                                "id_capitulo": capId,
+                                "titulo": sub["titulo"],
+                                "orden": orden_sub
+                            }
+                            for orden_sub, sub in enumerate(subs)
+                        ]
+                        conn.execute(
+                            text("""
+                                INSERT INTO subcapitulos (id_capitulo, titulo, orden)
+                                VALUES (:id_capitulo, :titulo, :orden)
+                            """),
+                            filas_subs
                         )
-                    filas.append({
-                        "id_libro": bookId,
-                        "titulo": texto
-                    })
-
-
-                conn.execute(
-                    text("""
-                        INSERT INTO capitulos (id_libro, titulo)
-                        VALUES (:id_libro, :titulo)
-
-                    """),
-                     filas
-                )
-
 
         TAMAÑO_LOTE = 40
         lote = []
         total_chunks = 0
-
+        # Proceso para generar los embeddings y que la IA pueda buscar
+        # las mejores partes de los libros
         for pagina in paginas:
             num_pag = pagina["pagina"]
             texto = pagina["texto"]
@@ -75,9 +83,7 @@ def subirLibro(nombre_libro, paginas, capitulos,fecha, autor, tipo, tags, url_do
                 embedding = generar_embedding(chunk_limpio)
                 if embedding is None:
                     continue
-
-                #emb = np.array(embedding, dtype=np.float32)
-
+ 
                 lote.append({
                     "id_libro": bookId,
                     "contenido": chunk_limpio,
@@ -99,14 +105,11 @@ def subirLibro(nombre_libro, paginas, capitulos,fecha, autor, tipo, tags, url_do
         return bookId
 
 
-
-
-
-
-
-
-
     
+
+
+ 
+
 def _insertar_lote_embeddings(lote):
     with engine.begin() as conn:
         conn.execute(
@@ -158,67 +161,7 @@ def eliminar_libro(id_libro: int) -> bool:
 
     return result.rowcount > 0
 
-
-
-def obtener_listado_libros_con_capitulos():
-    try:
-        with engine.begin() as conn:
-            result = conn.execute(
-                text("""
-                    SELECT 
-                        l.id,
-                        l.libro,
-                        l.fecha,
-                        l.autor,
-                        l.tipo,
-                        l.tags,
-                        c.titulo AS capitulo
-                    FROM libros l
-                    LEFT JOIN capitulos c ON c.id_libro = l.id
-                    ORDER BY l.id
-                """)
-            ).fetchall()
-
-        libros = {}
-        for r in result:
-            if r.id not in libros:
-                libros[r.id] = {
-                    "libro": r.libro,
-                    "autor": r.autor,
-                    "fecha": r.fecha,
-                    "tipo": r.tipo,
-                    "tags": r.tags,
-                    "capitulos": []
-                }
-            if r.capitulo:
-                libros[r.id]["capitulos"].append(r.capitulo)
-
-        return libros
-
-    except Exception as e:
-        print(f"❌ Error listado libros-capítulos: {e}")
-        return {}
-
-
-
-
-def formatear_listado_libros(libros_dict):
-    salida = []
-    for libro in libros_dict.values():
-        salida.append(f"📘 {libro['libro']}")
-        salida.append(
-             f"Autor: {libro['autor']} | "
-            f"Fecha: {libro['fecha']} | "
-            f"Tipo: {libro['tipo']}"
-        )
-        if libro['capitulos']:
-            for  cap in libro['capitulos']:
-                salida.append(f"- {cap}")
-        else:
-            salida.append("")  # línea en blanco
-    return "\n".join(salida)
-
-
+ 
 
 def descargar_libro_por_id(id_libro: int):
     with engine.begin() as conn:

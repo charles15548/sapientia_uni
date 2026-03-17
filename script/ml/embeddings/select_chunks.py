@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from script.ml.embeddings.embedding import generar_embedding  # Usa tu función existente
+from script.ml.embeddings.embedding import generar_embedding
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 

@@ -51,7 +51,26 @@ class Capitulos(Base):
         nullable=False
     )
     titulo = Column(Text, nullable=False)
+    orden = Column(Integer, default=0)
     libro = relationship("Libros", back_populates="capitulos")
+    subcapitulos = relationship(
+        "Subcapitulos",
+        back_populates="capitulo",
+        cascade="all, delete-orphan",
+        order_by="Subcapitulos.orden"
+    )
+
+class Subcapitulos(Base):
+    __tablename__ = "subcapitulos"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    id_capitulo = Column(
+        Integer,
+        ForeignKey("capitulos.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    titulo = Column(Text, nullable=False)
+    orden = Column(Integer, default=0)
+    capitulo = relationship("Capitulos",back_populates="subcapitulos")
 
 
 class DocumentChunks(Base):
@@ -67,11 +86,46 @@ class DocumentChunks(Base):
 
 
 
+
+# def migrar_subcapitulos():
+#     with engine.begin() as conn:
+#         caps = conn.execute(text("SELECT id, titulo FROM capitulos")).fetchall()
+
+#         for cap in caps:
+#             partes = cap.titulo.split("\n\n", 1)
+#             titulo_limpio = partes[0].strip()
+
+#             conn.execute(
+#                 text("UPDATE capitulos SET titulo = :titulo WHERE id = :id"),
+#                 {"titulo": titulo_limpio, "id": cap.id}
+#             )
+
+#             if len(partes) > 1:
+#                 subs = [
+#                     linea.lstrip("- ").strip()
+#                     for linea in partes[1].splitlines()
+#                     if linea.strip()
+#                 ]
+#                 for orden, sub in enumerate(subs):
+#                     conn.execute(
+#                         text("""
+#                             INSERT INTO subcapitulos (id_capitulo, titulo, orden)
+#                             VALUES (:id_capitulo, :titulo, :orden)
+#                         """),
+#                         {"id_capitulo": cap.id, "titulo": sub, "orden": orden}
+#                     )
+
+#     print("✅ Migración completada")
+
 def init_db():
     # 1. Ensure pgvector extension exists
-    with engine.connect() as conn:
-        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
-        conn.commit()
+ 
+    with engine.begin() as conn:
+        conn.execute(text('ALTER TABLE capitulos ADD COLUMN IF NOT EXISTS orden INTEGER DEFAULT 0'))
+        print('✅ Columna orden agregada a capitulos')
+    # with engine.begin() as conn:
+    #     conn.execute(text('DROP TABLE IF EXISTS subcapitulos CASCADE'))
+    #     print('✅ Tabla subcapitulos eliminada')
 
     # 2. Create all tables
     Base.metadata.create_all(bind=engine)
@@ -99,3 +153,5 @@ def init_db():
 
 if __name__== "__main__":
     init_db()
+    
+    

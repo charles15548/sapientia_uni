@@ -1,0 +1,154 @@
+@startuml
+title Backend RAG - Flujo General de Sapientia UNI
+top to bottom direction
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam defaultFontName Arial
+skinparam ArrowColor #2F5D8C
+skinparam packageBorderColor #5B7C99
+skinparam packageBackgroundColor #F7FAFC
+skinparam rectangleBorderColor #5B7C99
+skinparam rectangleBackgroundColor #FFFFFF
+skinparam databaseBorderColor #8A6D3B
+skinparam databaseBackgroundColor #FFF8E8
+skinparam folderBorderColor #6B8E23
+skinparam folderBackgroundColor #F6FFF0
+skinparam cloudBorderColor #4A6FA5
+skinparam cloudBackgroundColor #EEF5FF
+
+actor Cliente
+rectangle "FastAPI\napp.py" as API
+
+database "tabla persona" as persona
+database "tabla libros" as libros
+database "tabla capitulos" as capitulos
+database "tabla document_chunks\n(pgvector)" as docchunks
+folder "Disco\n/data/libros" as disk
+cloud "OpenAI API" as openai
+
+Cliente --> API
+
+package "1. Autenticacion" {
+  rectangle "POST /acceso" as epAcceso
+  rectangle "login(correo, contrasena)" as fnLogin
+  rectangle "Generar JWT" as jwt
+
+  API --> epAcceso
+  epAcceso --> fnLogin
+  fnLogin --> persona : validar usuario
+  fnLogin --> jwt : si credenciales validas
+}
+
+package "2. Carga e indexacion de libros" {
+  rectangle "POST /subir-libro" as epSubir
+  rectangle "procesarSubida()" as procesar
+  rectangle "guardar_libro_en_disk()" as guardar
+  rectangle "Validar extension" as validarExt
+  rectangle "extraer_paginas_pdf()" as pdf
+  rectangle "extraer_paginas_word()" as word
+  rectangle "detectar_capitulos()" as detectarCap
+  rectangle "limpiar_texto_rag()" as limpiarRag
+  rectangle "subirLibro()" as subirLibro
+  rectangle "dividir_en_chunks()" as chunks
+  rectangle "limpiar_texto()" as limpiarChunk
+  rectangle "generar_embedding()" as embChunk
+  rectangle "_insertar_lote_embeddings()" as insertarLote
+
+  API --> epSubir
+  epSubir --> procesar
+  procesar --> guardar
+  guardar --> disk
+
+  procesar --> validarExt
+  validarExt --> pdf : .pdf
+  validarExt --> word : .docx
+
+  pdf --> detectarCap
+  word --> detectarCap
+
+  pdf --> limpiarRag
+  word --> limpiarRag
+
+  detectarCap --> openai : detectar capitulos
+  limpiarRag --> subirLibro
+
+  subirLibro --> libros : insertar libro
+  subirLibro --> capitulos : insertar capitulos
+  subirLibro --> chunks
+  chunks --> limpiarChunk
+  limpiarChunk --> embChunk
+  embChunk --> insertarLote
+  insertarLote --> docchunks : guardar vectores
+}
+
+package "3. Consulta RAG en streaming" {
+  rectangle "POST /consultar-stream" as epConsultar
+  rectangle "response_stream()" as response
+  rectangle "select_chunck()" as selectChunk
+  rectangle "historial_a_texto()" as historialTexto
+  rectangle "construir_query_embedding()" as queryEmbed
+  rectangle "generar_embedding()" as embQuery
+  rectangle "Busqueda vectorial" as vectorial
+  rectangle "prompt_base()" as prompt
+  rectangle "obtener_listado_libros_con_capitulos()" as listado
+  rectangle "formatear_listado_libros()" as formatear
+  rectangle "Construir contexto RAG" as contexto
+  rectangle "StreamingResponse\ntext/event-stream" as stream
+
+  API --> epConsultar
+  epConsultar --> response
+  response --> selectChunk
+  selectChunk --> historialTexto
+  historialTexto --> queryEmbed
+  queryEmbed --> embQuery
+  embQuery --> vectorial
+  vectorial --> docchunks : similitud vectorial
+  vectorial --> libros : join para metadatos
+
+  response --> prompt
+  response --> listado
+  listado --> libros
+  listado --> capitulos
+  listado --> formatear
+  response --> contexto
+  contexto --> openai : chat.completions.stream()
+  openai --> stream
+}
+
+package "4. Gestion de libros" {
+  rectangle "GET /libros" as epListar
+  rectangle "listar_libros()" as fnListar
+
+  rectangle "GET /libros/{id}/descargar" as epDescargar
+  rectangle "descargar_libro_por_id()" as fnDescargar
+  rectangle "FileResponse" as fileResponse
+
+  rectangle "DELETE /libros/{id_libro}" as epEliminar
+  rectangle "eliminar_libro()" as fnEliminar
+
+  rectangle "POST /disk/subir-manual" as epManual
+
+  API --> epListar
+  epListar --> fnListar
+  fnListar --> libros
+
+  API --> epDescargar
+  epDescargar --> fnDescargar
+  fnDescargar --> libros
+  fnDescargar --> disk
+  fnDescargar --> fileResponse
+
+  API --> epEliminar
+  epEliminar --> fnEliminar
+  fnEliminar --> libros : delete cascada
+  fnEliminar --> capitulos
+  fnEliminar --> docchunks
+
+  API --> epManual
+  epManual --> guardar
+  guardar --> disk
+}
+
+@enduml
