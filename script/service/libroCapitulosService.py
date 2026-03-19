@@ -3,8 +3,8 @@
 
 def formatear_listado_libros(libros_dict):
     """
-    Funcion asignada para que el listado 
-    de los capitulos se muestren de forma ordenada
+    Formatea libros con capítulos y 
+    subcapítulos para pasarlo al prompt de la IA
     """
     salida = []
     for libro in libros_dict.values():
@@ -15,10 +15,12 @@ def formatear_listado_libros(libros_dict):
             f"Tipo: {libro['tipo']}"
         )
         if libro['capitulos']:
-            for  cap in libro['capitulos']:
-                salida.append(f"- {cap}")
-        else:
-            salida.append("")  # línea en blanco
+            for  i,cap in enumerate(libro['capitulos'], start=1):
+                salida.append(f"  {i}. {cap['titulo']}")
+                for j,sub in enumerate(cap["subcapitulos"],start=1):
+                    salida.append(f"{i}.{j}. {sub}")
+        salida.append(" ")
+
     return "\n".join(salida)
 
 

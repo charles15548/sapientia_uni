@@ -78,10 +78,13 @@ def obtener_listado_libros_con_capitulos():
                         l.autor,
                         l.tipo,
                         l.tags,
-                        c.titulo AS capitulo
+                        c.id AS capitulo_id,
+                        c.titulo AS capitulo,
+                        s.titulo AS subcapitulo
                     FROM libros l
                     LEFT JOIN capitulos c ON c.id_libro = l.id
-                    ORDER BY l.id
+                    LEFT JOIN subcapitulos s ON s.id_capitulo = c.id
+                    ORDER BY l.id, c.id, s.orden
                 """)
             ).fetchall()
 
@@ -94,18 +97,49 @@ def obtener_listado_libros_con_capitulos():
                     "fecha": r.fecha,
                     "tipo": r.tipo,
                     "tags": r.tags,
-                    "capitulos": []
+                    "capitulos": {}
                 }
-            if r.capitulo:
-                libros[r.id]["capitulos"].append(r.capitulo)
-
+            if r.capitulo_id and r.capitulo_id not in libros[r.id]["capitulos"]:
+                libros[r.id]["capitulos"][r.capitulo_id] = {
+                    "titulo": r.capitulo,
+                    "subcapitulos": []
+                }
+            if r.subcapitulo:
+                libros[r.id]["capitulos"][r.capitulo_id]["subcapitulos"].append(r.subcapitulo)
+        for libro in libros.values():
+            libro["capitulos"] = list(libro["capitulos"].values())
         return libros
+
+    
 
     except Exception as e:
         print(f"❌ Error listado libros-capítulos: {e}")
         return {}
     
+# ==========
+# CAPITULO
+# ==========
+def crear_capitulo(id_libro: int, titulo: str):
+    with engine.begin() as conn:
+        # Obtener el siguiente orden
+        result = conn.execute(
+            text("SELECT COALESCE(MAX(orden), 0) + 1 FROM capitulos WHERE id_libro = :id_libro"),
+            {"id_libro": id_libro}
+        )
+        siguiente_orden = result.scalar()
 
+        result = conn.execute(
+            text("""
+                INSERT INTO capitulos (id_libro, titulo, orden)
+                VALUES (:id_libro, :titulo, :orden)
+                RETURNING id, titulo, orden
+            """),
+            {"id_libro": id_libro, "titulo": titulo.strip(), "orden": siguiente_orden}
+        )
+        row = result.fetchone()
+        if not row:
+            raise HTTPException(status_code=500, detail="Error al crear capítulo")
+    return {"id": row.id, "titulo": row.titulo, "orden": row.orden}
 
 def editar_capitulo(cap_id, nuevo_titulo):
     with engine.begin() as conn:
@@ -123,6 +157,45 @@ def editar_capitulo(cap_id, nuevo_titulo):
             raise HTTPException(status_code=404, detail="Capítulo no encontrado")
     return {"id": row.id, "titulo": row.titulo}
 
+def eliminar_capitulo(cap_id: int):
+    with engine.begin() as conn:
+        result = conn.execute(
+            text("DELETE FROM capitulos WHERE id = :id RETURNING id"),
+            {"id": cap_id}
+        )
+        row = result.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Capítulo no encontrado")
+    return {"message": f"Capítulo {cap_id} eliminado ✅"}
+
+
+ 
+# ==========
+# SUB CAPITULO
+# ==========
+def crear_subcapitulo(id_capitulo: int, titulo: str):
+    with engine.begin() as conn:
+        # Obtener el siguiente orden
+        result = conn.execute(
+            text("SELECT COALESCE(MAX(orden), 0) + 1 FROM subcapitulos WHERE id_capitulo = :id_capitulo"),
+            {"id_capitulo": id_capitulo}
+        )
+        siguiente_orden = result.scalar()
+
+        result = conn.execute(
+            text("""
+                INSERT INTO subcapitulos (id_capitulo, titulo, orden)
+                VALUES (:id_capitulo, :titulo, :orden)
+                RETURNING id, titulo, orden
+            """),
+            {"id_capitulo": id_capitulo, "titulo": titulo.strip(), "orden": siguiente_orden}
+        )
+        row = result.fetchone()
+        if not row:
+            raise HTTPException(status_code=500, detail="Error al crear capítulo")
+    return {"id": row.id, "titulo": row.titulo, "orden": row.orden}
+
+
 def editar_subcapitulo(sub_id, nuevo_titulo):
     with engine.begin() as conn:
         result = conn.execute(
@@ -139,3 +212,15 @@ def editar_subcapitulo(sub_id, nuevo_titulo):
         if not row:
             raise HTTPException(status_code=404, detail="Subcapítulo no encontrado")
         return {"id": row.id, "titulo": row.titulo}
+    
+
+def eliminar_subcapitulo(sub_id: int):
+    with engine.begin() as conn:
+        result = conn.execute(
+            text("DELETE FROM subcapitulos WHERE id = :id RETURNING id"),
+            {"id": sub_id}
+        )
+        row = result.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Subcapítulo no encontrado")
+    return {"message": f"Subcapítulo {sub_id} eliminado"}

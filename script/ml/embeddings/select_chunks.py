@@ -44,20 +44,36 @@ def select_chunck(pregunta,historial, cantidad_chunks):
             embedding = [float(x) for x in embedding]
 
         query = text("""
+        WITH top_global AS (
             SELECT 
                 dc.id_libro,
                 l.libro AS nombre_libro,
                 l.fecha,
                 l.autor,
                 dc.contenido,
-                dc.pagina
+                dc.pagina,
+                dc.embedding <=> (:pregunta)::vector AS distancia
             FROM document_chunks dc
             JOIN libros l ON l.id = dc.id_libro
             WHERE 
                 dc.embedding  IS NOT NULL    
                 AND trim(coalesce(dc.contenido, '')) <> ''
             ORDER BY dc.embedding <=> (:pregunta)::vector
-            LIMIT :cantidad
+            LIMIT 100
+        ),
+        ranked AS (
+            SELECT *,
+                ROW_NUMBER() OVER (
+                    PARTITION BY id_libro
+                    ORDER BY distancia
+                ) as rank_por_libro
+            FROM top_global
+        ) 
+        SELECT *
+        FROM ranked
+        ORDER BY
+            distancia + (rank_por_libro - 1) * 0.02
+        LIMIT :cantidad
         """)
 
         session.execute(text("SET ivfflat.probes = 10"))

@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from script.ml.embeddings.libros.subir_libro import procesarSubida, guardar_libro_en_disk
 from script.controllers.libro import eliminar_libro, listar_libros,descargar_libro_por_id
 from script.controllers.capitulos import obtener_listado_libros_con_capitulos_service
-from script.controllers.capitulos import editar_capitulo,editar_subcapitulo
+from script.controllers.capitulos import editar_capitulo,editar_subcapitulo, crear_capitulo, eliminar_capitulo, crear_subcapitulo,eliminar_subcapitulo
 from script.ml.response import response_stream
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
@@ -248,6 +248,19 @@ async def subir_manual(
 # CAPITULOS
 # ===============
 
+
+@app.post("/libros/{id_libro}/capitulos")
+def endpoint_crear_capitulo(id_libro: int, body: dict):
+    try:
+        titulo = body.get("titulo", "").strip()
+        if not titulo:
+            raise HTTPException(status_code=400, detail="El título no puede estar vacío")
+        return crear_capitulo(id_libro, titulo)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Error al crear capítulo")
+
 @app.put("/capitulos/{cap_id}")
 def endpoint_editar_capitulo(cap_id: int, body: dict):
     try:
@@ -260,6 +273,37 @@ def endpoint_editar_capitulo(cap_id: int, body: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail="Error al editar capítulo")
 
+
+@app.delete("/capitulos/{cap_id}")
+def endpoint_eliminar_capitulo(cap_id: int):
+    try:
+        return eliminar_capitulo(cap_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Error al eliminar capítulo")
+
+
+
+
+
+# ===============
+# SUB CAPITULOS
+# ===============
+@app.post("/capitulos/{id_capitulo}/subcapitulos")
+def endpoint_crear_subcapitulo(id_capitulo: int, body: dict):
+    try:
+        titulo = body.get("titulo", "").strip()
+        if not titulo:
+            raise HTTPException(status_code=400, detail="El título no puede estar vacío")
+        return crear_subcapitulo(id_capitulo, titulo)
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error al crear subcapítulo")
+
+
+
 @app.put("/subcapitulos/{sub_id}")
 def endpoint_editar_subcapitulo(sub_id: int, body: dict):
     try:
@@ -271,6 +315,18 @@ def endpoint_editar_subcapitulo(sub_id: int, body: dict):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail="Error al editar capítulo")
+
+@app.delete("/subcapitulos/{sub_id}")
+def endpoint_eliminar_subcapitulo(sub_id: int):
+    try:
+        return eliminar_subcapitulo(sub_id)
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error al eliminar subcapítulo")
+
+
+
 
 
 # Ejecutar: uvicorn app:app --reload
