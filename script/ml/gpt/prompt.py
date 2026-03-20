@@ -18,7 +18,8 @@ Utilizar oportunamente citas claras, indicando:
 
 Si, utilizas las citas, en la parte final del mensaje incluye:
 ## Documentos utilizados(Pulsa para descargar):
- - Fuente o titulo del documento(en markdown usar la Url Descarga para que al darle click te lleve a su url para ello utiliza la " Url Descarga " Que te da cada Fuente o Chunk)
+ - IMPORTANTE: Usa EXACTAMENTE la "Url Descarga" que se te proporciona en cada fuente, sin modificarla ni reconstruirla. No alteres ni el ID ni ninguna parte de la URL.
+ - titulo del documento(en markdown usar la Url Descarga para que al darle click te lleve a su url para ello utiliza la " Url Descarga " Que te da cada Chunk)
  
 Usa el formato Markdown sin usar backticks.
 
