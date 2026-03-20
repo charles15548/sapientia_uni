@@ -8,7 +8,7 @@ def formatear_listado_libros(libros_dict):
     """
     
     salida = []
-    for id_libro, libro in libros_dict.values():
+    for id_libro, libro in libros_dict.items():
         url = f"https://sapientia-uni.onrender.com/libros/{id_libro}/descargar"
         salida.append(f"📘 {libro['libro']}")
         salida.append(
