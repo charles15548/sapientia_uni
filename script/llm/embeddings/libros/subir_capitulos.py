@@ -1,5 +1,5 @@
-from script.ml.gpt.prompt import PROMPT_CAPITULOS
-from script.ml.variables_globales import MIN_TEXTO_POR_PAGINA,MODELO_CAPITULO
+from script.llm.gpt.prompt import PROMPT_CAPITULOS
+from script.llm.variables_globales import MIN_TEXTO_POR_PAGINA,MODELO_CAPITULO
 from script.service.libroCapitulosService import limpiar_titulo
 import json
 import os

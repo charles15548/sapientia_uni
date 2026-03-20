@@ -1,6 +1,6 @@
 import fitz
-from script.ml.embeddings.libros.formatear_libro import  contar_texto, limpiar_texto_estructural
-from script.ml.variables_globales import MIN_TEXTO_POR_PAGINA
+from script.llm.embeddings.libros.formatear_libro import  contar_texto, limpiar_texto_estructural
+from script.llm.variables_globales import MIN_TEXTO_POR_PAGINA
 from docx import Document
 from fastapi import HTTPException
 

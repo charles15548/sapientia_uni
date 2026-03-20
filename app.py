@@ -2,16 +2,15 @@ from script.controllers.personas import login
 
 from fastapi import FastAPI, HTTPException,Form,File,Body,UploadFile
 from fastapi.responses import JSONResponse
-from script.ml.embeddings.libros.subir_libro import procesarSubida, guardar_libro_en_disk
+from script.llm.embeddings.libros.subir_libro import procesarSubida, guardar_libro_en_disk
 from script.controllers.libro import eliminar_libro, listar_libros,descargar_libro_por_id
 from script.controllers.capitulos import obtener_listado_libros_con_capitulos_service
 from script.controllers.capitulos import editar_capitulo,editar_subcapitulo, crear_capitulo, eliminar_capitulo, crear_subcapitulo,eliminar_subcapitulo
-from script.ml.response import response_stream
+from script.llm.response import response_stream
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from typing import List,Literal
 from pydantic import BaseModel
-import json
 import logging
 
 

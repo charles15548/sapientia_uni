@@ -4,7 +4,7 @@ from fastapi.responses import FileResponse
 from fastapi import HTTPException
 import os
 
-from script.ml.embeddings.embedding import dividir_en_chunks,limpiar_texto,generar_embedding
+from script.llm.embeddings.embedding import dividir_en_chunks,limpiar_texto,generar_embedding
 from script.bd.db import engine
 
 

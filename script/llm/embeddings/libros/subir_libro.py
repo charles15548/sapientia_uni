@@ -2,15 +2,15 @@ from pypdf import PdfReader
 from io import BytesIO
 from fastapi import UploadFile
 from script.controllers.libro import subirLibro
-from script.ml.embeddings.libros.formatear_libro import limpiar_texto_rag, contar_texto
-from script.ml.embeddings.libros.subir_capitulos import detectar_capitulos
-from script.ml.embeddings.libros.extraer_paginas import extraer_paginas_pdf,extraer_paginas_word
+from script.llm.embeddings.libros.formatear_libro import limpiar_texto_rag, contar_texto
+from script.llm.embeddings.libros.subir_capitulos import detectar_capitulos
+from script.llm.embeddings.libros.extraer_paginas import extraer_paginas_pdf,extraer_paginas_word
 import shutil
 import os
 
  
 from fastapi import HTTPException
-from script.ml.variables_globales import RUTA_BASE
+from script.llm.variables_globales import RUTA_BASE
 
 import openai
 from dotenv import load_dotenv

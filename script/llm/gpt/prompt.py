@@ -1,6 +1,8 @@
+PROMPT_GUARDRAIL = """
 
-def prompt_base():
-    return f"""
+"""
+ 
+PROMPT_BASE ="""
 
 Tu función es responder consultas usando la información contenida en los documentos proporcionados.
 Tu informacion se estrutura asi.
@@ -28,6 +30,8 @@ Si incluyes tablas, no agregues <br>.
 
 ---
 """
+
+
 
 
 

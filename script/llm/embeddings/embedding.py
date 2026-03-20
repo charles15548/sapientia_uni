@@ -3,7 +3,7 @@ import numpy as np
 from dotenv import load_dotenv
 from openai import OpenAI
 import re
-from script.ml.variables_globales import CHUNK_LIBRO, OVERLAP
+from script.llm.variables_globales import CHUNK_LIBRO, OVERLAP
 
 
 
