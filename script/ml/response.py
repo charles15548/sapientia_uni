@@ -19,7 +19,7 @@ client = OpenAI()
 def response_stream(pregunta_usuario, historial):
     chunks = select_chunck(pregunta_usuario,historial, CHUNCKS_POR_LIBRO)
 
-    contexto = "\n\n".join([f"Fuente: {c['libro']}\n Fecha: {c['fecha']} \n Autor: {c['autor']} \n Página: {c['pagina']} \n Url Descarga:  https://sapientia-uni.onrender.com/libros/{c['id_libro']}/descargar \nConocimiento:{c['contenido']}   " for c in chunks])
+    contexto = "\n\n".join([f"Fuente: {c['libro']}\n Fecha: {c['fecha']} \n Autor: {c['autor']} \n Página: {c['pagina']} \nConocimiento:{c['contenido']}   " for c in chunks])
 
     print(contexto)
     prompt = prompt_base()

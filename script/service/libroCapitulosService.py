@@ -6,13 +6,16 @@ def formatear_listado_libros(libros_dict):
     Formatea libros con capítulos y 
     subcapítulos para pasarlo al prompt de la IA
     """
+    
     salida = []
-    for libro in libros_dict.values():
+    for id_libro, libro in libros_dict.values():
+        url = f"https://sapientia-uni.onrender.com/libros/{id_libro}/descargar"
         salida.append(f"📘 {libro['libro']}")
         salida.append(
              f"Autor: {libro['autor']} | "
             f"Fecha: {libro['fecha']} | "
             f"Tipo: {libro['tipo']}"
+            f"Url Descarga: {url}"
         )
         if libro['capitulos']:
             for  i,cap in enumerate(libro['capitulos'], start=1):

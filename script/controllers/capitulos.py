@@ -97,6 +97,7 @@ def obtener_listado_libros_con_capitulos():
                     "fecha": r.fecha,
                     "tipo": r.tipo,
                     "tags": r.tags,
+                    
                     "capitulos": {}
                 }
             if r.capitulo_id and r.capitulo_id not in libros[r.id]["capitulos"]:
