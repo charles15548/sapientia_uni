@@ -1,5 +1,5 @@
 import re
-
+from script.llm.variables_globales import MODELO_MINI
 
 
 

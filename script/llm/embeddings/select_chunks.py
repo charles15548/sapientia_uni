@@ -1,16 +1,28 @@
 import os
 import numpy as np
 from script.llm.embeddings.embedding import generar_embedding
+from script.llm.variables_globales import MODELO_MINI
+from script.llm.gpt.prompt import PROMPT_REFORMULADOR, SEÑAL_FUERA_DE_DOMINIO
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-
+import openai
 from dotenv import load_dotenv
 load_dotenv()
+# Cargar clave desde .env
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+# Cliente de OpenAI
+from openai import OpenAI
+client = OpenAI()
+
 # Config DB
 VECTORES_CACHE = None
 DATABASE_URL = os.getenv("DATABASE_URL")
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
+
+
+ 
 
 def historial_a_texto(historial, max_mensajes = 6):
     mensajes = historial[-max_mensajes:]
@@ -31,13 +43,44 @@ def construir_query_embedding(pregunta_usuario, historial):
         """
     return pregunta_usuario
 
+def reformular_pregunta(pregunta, historial):
+    """
+        Usa un LLM liviano para reformular la pregunta actual
+    como una query de búsqueda autónoma, usando el historial
+    solo para resolver referencias ("eso", "ese tema", "más sobre eso")
+    """
+    preguntaEhistorial = construir_query_embedding(pregunta, historial)
+
+    respuesta = client.chat.completions.create(
+        model = MODELO_MINI , 
+        messages =[
+            {
+                "role": "system",
+                "content":( PROMPT_REFORMULADOR)
+            },
+            {
+                "role":"user",
+                "content":(
+                   preguntaEhistorial
+                )
+            }
+        ]
+    )
+    reformulada = respuesta.choices[0].message.content.strip()
+    print(f"🔍 Query reformulada: {reformulada}")
+    return reformulada
+
 
 
 def select_chunck(pregunta,historial, cantidad_chunks):
 
     # Construir el texto de busqueda convinando pregunta + historial
     # Esto enriquese el embeddings con contexto conversacional
-    query_embedding = construir_query_embedding(pregunta, historial)
+    query_embedding = reformular_pregunta(pregunta, historial)
+    
+    if query_embedding == SEÑAL_FUERA_DE_DOMINIO:
+        print("🚫 Pregunta fuera de dominio detectada en reformulación")
+        return [], None
     session = SessionLocal()
 
     try:
@@ -65,7 +108,7 @@ def select_chunck(pregunta,historial, cantidad_chunks):
                 dc.embedding IS NOT NULL
                 AND trim(coalesce(dc.contenido, '')) <> ''
             ORDER BY dc.embedding <=> (:pregunta)::vector
-            LIMIT 100
+            LIMIT 60
         )
         """
         # --- FASE 2: ranking interno por libro ---
@@ -101,7 +144,7 @@ def select_chunck(pregunta,historial, cantidad_chunks):
             }
         ).fetchall()
 
-        # Sin resultados → retora tnupla vacía (compatible con el umbral)
+        # Sin resultados → retrona  vacía (compatible con el umbral)
         if not result:
             return []
 

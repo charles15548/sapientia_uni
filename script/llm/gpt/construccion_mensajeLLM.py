@@ -27,6 +27,7 @@ def construir_mensajes_principal(chunks, historial):
     ])
     print(contexto)
 
+    print(" ".join(contexto.split()[:200]) + "...")
     libros_con_capitulos = obtener_listado_libros_con_capitulos()
     archivos_existentes = formatear_listado_libros(libros_con_capitulos)
     mensajes = [
