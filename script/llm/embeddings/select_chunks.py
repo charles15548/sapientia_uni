@@ -25,6 +25,10 @@ SessionLocal = sessionmaker(bind=engine)
  
 
 def historial_a_texto(historial, max_mensajes = 6):
+    """
+    Aqui es donde pasamos el texto json a plano,
+    ademas el maximo de historial que puede pasar es de 6
+    """
     mensajes = historial[-max_mensajes:]
 
     return "\n".join(
@@ -33,6 +37,11 @@ def historial_a_texto(historial, max_mensajes = 6):
     )
 
 def construir_query_embedding(pregunta_usuario, historial):
+    """
+    En esta función simplemente unimos la pregunta y el historial
+    para que el sistema lo lea sin problemas como texto plano y no como
+    json.
+    """
     historial_texto = historial_a_texto(historial)
     if historial_texto.strip():
         return f"""

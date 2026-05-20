@@ -1,0 +1,129 @@
+﻿@startuml
+title Sapientia UNI Backend - Flujo operativo (runtime)
+autonumber
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam ArrowColor #2F5D8C
+skinparam sequenceMessageAlign center
+
+actor Cliente
+participant "FastAPI\napp.py" as API
+participant "personas.login()" as LOGIN
+participant "subir_libro.procesarSubida()" as SUBIDA
+participant "controllers.libro.subirLibro()" as SUBIRLIBRO
+participant "response_stream()" as RESPONSE
+participant "select_chunck()" as SELECT
+participant "construccion_mensajeLLM" as MSG
+participant "embedding.py" as EMB
+participant "extraer_paginas.py" as EXTRAER
+participant "subir_capitulos.py" as CAPITULOS
+participant "PostgreSQL + pgvector" as DB
+participant "Storage /data/libros" as DISK
+participant "OpenAI API" as OPENAI
+
+== 1) Flujo de acceso ==
+Cliente -> API: POST /acceso (correo, contrasena)
+API -> LOGIN: login(correo, contrasena)
+LOGIN -> DB: SELECT persona por correo
+DB --> LOGIN: usuario (o null)
+alt credenciales validas
+  LOGIN --> API: {id, token JWT, message}
+  API --> Cliente: 200 OK
+else invalidas
+  LOGIN --> API: mensaje de error
+  API --> Cliente: 200/4xx segun caso
+end
+
+== 2) Flujo de carga e indexacion ==
+Cliente -> API: POST /subir-libro (metadata + archivo)
+API -> SUBIDA: procesarSubida(...)
+SUBIDA -> DISK: guardar_libro_en_disk()
+DISK --> SUBIDA: ruta url_doc
+
+alt extension .pdf
+  SUBIDA -> EXTRAER: extraer_paginas_pdf()
+  EXTRAER --> SUBIDA: paginas
+else extension .docx
+  SUBIDA -> EXTRAER: extraer_paginas_word()
+  EXTRAER --> SUBIDA: paginas
+else formato no soportado
+  SUBIDA --> API: HTTPException 400
+  API --> Cliente: error
+end
+
+SUBIDA -> CAPITULOS: detectar_capitulos(paginas)
+CAPITULOS -> OPENAI: chat.completions (PROMPT_CAPITULOS)
+OPENAI --> CAPITULOS: JSON capitulos/subcapitulos
+CAPITULOS --> SUBIDA: capitulos limpios
+
+SUBIDA -> SUBIRLIBRO: subirLibro(..., paginas, capitulos, url_doc)
+SUBIRLIBRO -> DB: INSERT libros + capitulos + subcapitulos
+
+loop por pagina y chunk
+  SUBIRLIBRO -> EMB: dividir_en_chunks() + limpiar_texto()
+  SUBIRLIBRO -> EMB: generar_embedding(chunk)
+  EMB -> OPENAI: embeddings.create(text-embedding-3-small)
+  OPENAI --> EMB: vector embedding
+  EMB --> SUBIRLIBRO: embedding
+  SUBIRLIBRO -> DB: INSERT document_chunks (lote)
+end
+
+SUBIRLIBRO --> SUBIDA: bookId creado
+SUBIDA --> API: Libro insertado
+API --> Cliente: 200 OK
+
+== 3) Flujo RAG en streaming ==
+Cliente -> API: POST /consultar-stream (pregunta, historial)
+API -> RESPONSE: response_stream(pregunta, historial)
+RESPONSE -> SELECT: select_chunck(pregunta, historial, k)
+
+SELECT -> OPENAI: reformular pregunta (MODELO_MINI)
+OPENAI --> SELECT: query reformulada / fuera_de_dominio
+
+alt fuera de dominio
+  SELECT --> RESPONSE: chunks=[], distancia=None
+else consulta valida
+  SELECT -> EMB: generar_embedding(query)
+  EMB -> OPENAI: embeddings.create()
+  OPENAI --> EMB: vector query
+  EMB --> SELECT: vector query
+  SELECT -> DB: busqueda vectorial ivfflat + join libros
+  DB --> SELECT: top chunks + distancia minima
+  SELECT --> RESPONSE: chunks, distancia_minima
+end
+
+alt sin contexto relevante (umbral)
+  RESPONSE -> MSG: construir_mensajes_rechazo()
+else con contexto
+  RESPONSE -> MSG: construir_mensajes_principal(chunks, historial)
+  MSG -> DB: obtener_listado_libros_con_capitulos()
+  DB --> MSG: libros/capitulos/subcapitulos
+end
+
+RESPONSE -> OPENAI: chat.completions.stream(model=MODELO)
+loop tokens del stream
+  OPENAI --> RESPONSE: delta
+  RESPONSE --> API: evento SSE
+  API --> Cliente: text/event-stream
+end
+
+== 4) Flujo de gestion de libros/capitulos ==
+Cliente -> API: GET /libros | GET /libros/con-capitulos
+API -> DB: SELECT libros / joins
+DB --> API: resultados
+API --> Cliente: listado
+
+Cliente -> API: DELETE /libros/{id}
+API -> DB: DELETE libros (cascade capitulos/subcapitulos/chunks)
+DB --> API: rowcount
+API --> Cliente: confirmacion
+
+Cliente -> API: GET /libros/{id}/descargar
+API -> DB: SELECT url_doc
+DB --> API: ruta archivo
+API -> DISK: leer archivo
+DISK --> API: binario
+API --> Cliente: FileResponse
+
+@enduml

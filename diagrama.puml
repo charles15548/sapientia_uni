@@ -1,5 +1,5 @@
-@startuml
-title Backend RAG - Flujo General de Sapientia UNI
+﻿@startuml
+title Sapientia UNI Backend - Organizacion completa del proyecto
 top to bottom direction
 
 skinparam backgroundColor white
@@ -18,137 +18,144 @@ skinparam folderBackgroundColor #F6FFF0
 skinparam cloudBorderColor #4A6FA5
 skinparam cloudBackgroundColor #EEF5FF
 
-actor Cliente
+actor "Cliente / Frontend" as CLIENTE
 rectangle "FastAPI\napp.py" as API
 
-database "tabla persona" as persona
-database "tabla libros" as libros
-database "tabla capitulos" as capitulos
-database "tabla document_chunks\n(pgvector)" as docchunks
-folder "Disco\n/data/libros" as disk
-cloud "OpenAI API" as openai
+folder "Proyecto back/" as ROOT {
+  artifact ".env" as ENV
+  artifact "requirements.txt" as REQ
+  artifact "test.py\n(sin contenido)" as TEST
 
-Cliente --> API
+  folder "out/" as OUT {
+    folder "diagrama/" as OUT_DIAG {
+      artifact "diagrama.png" as DIAG_PNG
+    }
+  }
 
-package "1. Autenticacion" {
-  rectangle "POST /acceso" as epAcceso
-  rectangle "login(correo, contrasena)" as fnLogin
-  rectangle "Generar JWT" as jwt
+  folder "script/" as SCRIPT {
+    folder "bd/" as PKG_BD {
+      artifact "db.py" as DB_PY
+      artifact "delete-db.py" as DELETE_DB_PY
+    }
 
-  API --> epAcceso
-  epAcceso --> fnLogin
-  fnLogin --> persona : validar usuario
-  fnLogin --> jwt : si credenciales validas
+    folder "controllers/" as PKG_CTRL {
+      artifact "personas.py" as CTRL_PERSONAS
+      artifact "libro.py" as CTRL_LIBRO
+      artifact "capitulos.py" as CTRL_CAPITULOS
+    }
+
+    folder "service/" as PKG_SRV {
+      artifact "libroCapitulosService.py" as SRV_LIBCAP
+    }
+
+    folder "llm/" as PKG_LLM {
+      artifact "variables_globales.py" as LLM_VARS
+      artifact "response.py" as LLM_RESPONSE
+
+      folder "gpt/" as PKG_GPT {
+        artifact "prompt.py" as GPT_PROMPT
+        artifact "construccion_mensajeLLM.py" as GPT_MSG
+      }
+
+      folder "embeddings/" as PKG_EMB {
+        artifact "embedding.py" as EMB_CORE
+        artifact "select_chunks.py" as EMB_SELECT
+
+        folder "libros/" as PKG_LIBROS {
+          artifact "subir_libro.py" as LIB_SUBIR
+          artifact "subir_capitulos.py" as LIB_CAPITULOS
+          artifact "extraer_paginas.py" as LIB_PAGINAS
+          artifact "formatear_libro.py" as LIB_FORMATO
+        }
+      }
+    }
+  }
+
+  folder ".venv/" as VENV
+  folder "__pycache__/" as CACHE
 }
 
-package "2. Carga e indexacion de libros" {
-  rectangle "POST /subir-libro" as epSubir
-  rectangle "procesarSubida()" as procesar
-  rectangle "guardar_libro_en_disk()" as guardar
-  rectangle "Validar extension" as validarExt
-  rectangle "extraer_paginas_pdf()" as pdf
-  rectangle "extraer_paginas_word()" as word
-  rectangle "detectar_capitulos()" as detectarCap
-  rectangle "limpiar_texto_rag()" as limpiarRag
-  rectangle "subirLibro()" as subirLibro
-  rectangle "dividir_en_chunks()" as chunks
-  rectangle "limpiar_texto()" as limpiarChunk
-  rectangle "generar_embedding()" as embChunk
-  rectangle "_insertar_lote_embeddings()" as insertarLote
+database "PostgreSQL + pgvector\npersona, libros, capitulos,\nsubcapitulos, document_chunks" as DB
+folder "Storage en disco\n/data/libros" as DISK
+cloud "OpenAI API\nchat.completions + embeddings" as OPENAI
 
-  API --> epSubir
-  epSubir --> procesar
-  procesar --> guardar
-  guardar --> disk
+CLIENTE --> API
 
-  procesar --> validarExt
-  validarExt --> pdf : .pdf
-  validarExt --> word : .docx
+API --> CTRL_PERSONAS : POST /acceso
+API --> CTRL_LIBRO : GET /libros\nGET /libros/{id}/descargar\nDELETE /libros/{id_libro}
+API --> CTRL_CAPITULOS : GET /libros/con-capitulos\nCRUD capitulos/subcapitulos
+API --> LLM_RESPONSE : POST /consultar-stream
+API --> LIB_SUBIR : POST /subir-libro\nPOST /disk/subir-manual
 
-  pdf --> detectarCap
-  word --> detectarCap
+CTRL_PERSONAS --> DB_PY
+CTRL_LIBRO --> DB_PY
+CTRL_CAPITULOS --> DB_PY
+DELETE_DB_PY --> DB
+DB_PY --> DB
 
-  pdf --> limpiarRag
-  word --> limpiarRag
+LLM_RESPONSE --> EMB_SELECT
+LLM_RESPONSE --> GPT_MSG
+LLM_RESPONSE --> LLM_VARS
+LLM_RESPONSE --> OPENAI
 
-  detectarCap --> openai : detectar capitulos
-  limpiarRag --> subirLibro
+GPT_MSG --> GPT_PROMPT
+GPT_MSG --> CTRL_CAPITULOS : obtener_listado_libros_con_capitulos()
+GPT_MSG --> SRV_LIBCAP : formatear_listado_libros()
 
-  subirLibro --> libros : insertar libro
-  subirLibro --> capitulos : insertar capitulos
-  subirLibro --> chunks
-  chunks --> limpiarChunk
-  limpiarChunk --> embChunk
-  embChunk --> insertarLote
-  insertarLote --> docchunks : guardar vectores
-}
+EMB_SELECT --> EMB_CORE
+EMB_SELECT --> GPT_PROMPT
+EMB_SELECT --> LLM_VARS
+EMB_SELECT --> DB : busqueda vectorial
+EMB_SELECT --> OPENAI : reformular pregunta
 
-package "3. Consulta RAG en streaming" {
-  rectangle "POST /consultar-stream" as epConsultar
-  rectangle "response_stream()" as response
-  rectangle "select_chunck()" as selectChunk
-  rectangle "historial_a_texto()" as historialTexto
-  rectangle "construir_query_embedding()" as queryEmbed
-  rectangle "generar_embedding()" as embQuery
-  rectangle "Busqueda vectorial" as vectorial
-  rectangle "prompt_base()" as prompt
-  rectangle "obtener_listado_libros_con_capitulos()" as listado
-  rectangle "formatear_listado_libros()" as formatear
-  rectangle "Construir contexto RAG" as contexto
-  rectangle "StreamingResponse\ntext/event-stream" as stream
+LIB_SUBIR --> LIB_PAGINAS
+LIB_SUBIR --> LIB_FORMATO
+LIB_SUBIR --> LIB_CAPITULOS
+LIB_SUBIR --> CTRL_LIBRO : subirLibro()
+LIB_SUBIR --> LLM_VARS
+LIB_SUBIR --> DISK
 
-  API --> epConsultar
-  epConsultar --> response
-  response --> selectChunk
-  selectChunk --> historialTexto
-  historialTexto --> queryEmbed
-  queryEmbed --> embQuery
-  embQuery --> vectorial
-  vectorial --> docchunks : similitud vectorial
-  vectorial --> libros : join para metadatos
+LIB_CAPITULOS --> GPT_PROMPT
+LIB_CAPITULOS --> LLM_VARS
+LIB_CAPITULOS --> SRV_LIBCAP : limpiar_titulo()
+LIB_CAPITULOS --> OPENAI
 
-  response --> prompt
-  response --> listado
-  listado --> libros
-  listado --> capitulos
-  listado --> formatear
-  response --> contexto
-  contexto --> openai : chat.completions.stream()
-  openai --> stream
-}
+LIB_PAGINAS --> LIB_FORMATO
+LIB_PAGINAS --> LLM_VARS
 
-package "4. Gestion de libros" {
-  rectangle "GET /libros" as epListar
-  rectangle "listar_libros()" as fnListar
+CTRL_LIBRO --> EMB_CORE : dividir_en_chunks()\nlimpiar_texto()\ngenerar_embedding()
+CTRL_LIBRO --> DISK : FileResponse descarga
 
-  rectangle "GET /libros/{id}/descargar" as epDescargar
-  rectangle "descargar_libro_por_id()" as fnDescargar
-  rectangle "FileResponse" as fileResponse
+EMB_CORE --> LLM_VARS
+EMB_CORE --> OPENAI : text-embedding-3-small
 
-  rectangle "DELETE /libros/{id_libro}" as epEliminar
-  rectangle "eliminar_libro()" as fnEliminar
+DB_PY ..> ENV : DATABASE_URL
+LLM_RESPONSE ..> ENV : OPENAI_API_KEY
+EMB_CORE ..> ENV : OPENAI_API_KEY
+EMB_SELECT ..> ENV : OPENAI_API_KEY + DATABASE_URL
+LIB_CAPITULOS ..> ENV : OPENAI_API_KEY
+LIB_SUBIR ..> ENV : OPENAI_API_KEY
 
-  rectangle "POST /disk/subir-manual" as epManual
+REQ ..> API : dependencias runtime
+REQ ..> SCRIPT
+VENV ..> REQ : entorno local
+CACHE ..> SCRIPT : archivos compilados
+TEST ..> API : placeholder para pruebas manuales
+OUT_DIAG ..> DIAG_PNG : artefacto renderizado
 
-  API --> epListar
-  epListar --> fnListar
-  fnListar --> libros
+note right of LIB_SUBIR
+  Orquesta toda la ingesta:
+  guardar archivo, extraer texto,
+  detectar capitulos con LLM,
+  limpiar texto RAG e indexar chunks.
+end note
 
-  API --> epDescargar
-  epDescargar --> fnDescargar
-  fnDescargar --> libros
-  fnDescargar --> disk
-  fnDescargar --> fileResponse
-
-  API --> epEliminar
-  epEliminar --> fnEliminar
-  fnEliminar --> libros : delete cascada
-  fnEliminar --> capitulos
-  fnEliminar --> docchunks
-
-  API --> epManual
-  epManual --> guardar
-  guardar --> disk
-}
+note left of LLM_RESPONSE
+  Flujo RAG en streaming:
+  1) reformulacion conversacional
+  2) seleccion vectorial de chunks
+  3) construccion de prompt
+  4) respuesta SSE al cliente
+end note
 
 @enduml
